@@ -10,43 +10,43 @@ describe("solana-twitter", () => {
 
   const program = anchor.workspace.SolanaTwitter as Program<SolanaTwitter>;
   const anchorProvider = program.provider as anchor.AnchorProvider;
+  const programId = anchor.web3.SystemProgram.programId;
+  const author = anchorProvider.wallet.publicKey;
 
   it("can send a new tweet", async () => {
-    // Call the "SendTweet" instruction.
     const tweet = anchor.web3.Keypair.generate();
 
+    // Call the "SendTweet" instruction.
     await program.methods
       .sendTweet("veganism", "Hummus, am I right?")
       .accounts({
         tweet: tweet.publicKey,
-        author: anchorProvider.wallet.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
+        author: author,
+        systemProgram: programId,
       })
       .signers([tweet])
       .rpc();
 
     // Fetch the account details of the created tweet.
     const tweetAccount = await program.account.tweet.fetch(tweet.publicKey);
+
     // Ensure it has the right data.
-    assert.equal(
-      tweetAccount.author.toBase58(),
-      anchorProvider.wallet.publicKey.toBase58()
-    );
+    assert.equal(tweetAccount.author.toBase58(), author.toBase58());
     assert.equal(tweetAccount.topic, "veganism");
     assert.equal(tweetAccount.content, "Hummus, am I right?");
     assert.ok(tweetAccount.timestamp);
   });
 
   it("can send a new tweet without a topic", async () => {
-    // Call the "SendTweet" instruction.
     const tweet = anchor.web3.Keypair.generate();
 
+    // Call the "SendTweet" instruction.
     await program.methods
       .sendTweet("", "gm")
       .accounts({
         tweet: tweet.publicKey,
-        author: anchorProvider.wallet.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
+        author: author,
+        systemProgram: programId,
       })
       .signers([tweet])
       .rpc();
@@ -55,10 +55,7 @@ describe("solana-twitter", () => {
     const tweetAccount = await program.account.tweet.fetch(tweet.publicKey);
 
     // Ensure it has the right data.
-    assert.equal(
-      tweetAccount.author.toBase58(),
-      anchorProvider.wallet.publicKey.toBase58()
-    );
+    assert.equal(tweetAccount.author.toBase58(), author.toBase58());
     assert.equal(tweetAccount.topic, "");
     assert.equal(tweetAccount.content, "gm");
     assert.ok(tweetAccount.timestamp);
@@ -73,15 +70,15 @@ describe("solana-twitter", () => {
     );
     await program.provider.connection.confirmTransaction(signature);
 
-    // Call the "SendTweet" instruction on behalf of this other user.
     const tweet = anchor.web3.Keypair.generate();
 
+    // Call the "SendTweet" instruction on behalf of this other user.
     await program.methods
       .sendTweet("veganism", "Yay Tofu!")
       .accounts({
         tweet: tweet.publicKey,
         author: otherUser.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
+        systemProgram: programId,
       })
       .signers([otherUser, tweet])
       .rpc();
@@ -104,12 +101,13 @@ describe("solana-twitter", () => {
       const tweet = anchor.web3.Keypair.generate();
       const topicWith51Chars = "x".repeat(51);
 
+      // Call the "SendTweet" instruction.
       await program.methods
         .sendTweet(topicWith51Chars, "Hummus, am I right?")
         .accounts({
           tweet: tweet.publicKey,
-          author: anchorProvider.wallet.publicKey,
-          systemProgram: anchor.web3.SystemProgram.programId,
+          author: author,
+          systemProgram: programId,
         })
         .signers([tweet])
         .rpc();
@@ -131,12 +129,13 @@ describe("solana-twitter", () => {
       const tweet = anchor.web3.Keypair.generate();
       const contentWith281Chars = "x".repeat(281);
 
+      // Call the "SendTweet" instruction.
       await program.methods
         .sendTweet("veganism", contentWith281Chars)
         .accounts({
           tweet: tweet.publicKey,
-          author: anchorProvider.wallet.publicKey,
-          systemProgram: anchor.web3.SystemProgram.programId,
+          author: author,
+          systemProgram: programId,
         })
         .signers([tweet])
         .rpc();
@@ -159,12 +158,11 @@ describe("solana-twitter", () => {
   });
 
   it("can filter tweets by author", async () => {
-    const authorPublicKey = anchorProvider.wallet.publicKey;
     const tweetAccounts = await program.account.tweet.all([
       {
         memcmp: {
           offset: 8, // Discriminator.
-          bytes: authorPublicKey.toBase58(),
+          bytes: author.toBase58(),
         },
       },
     ]);
@@ -172,9 +170,7 @@ describe("solana-twitter", () => {
     assert.equal(tweetAccounts.length, 2);
     assert.ok(
       tweetAccounts.every((tweetAccount) => {
-        return (
-          tweetAccount.account.author.toBase58() === authorPublicKey.toBase58()
-        );
+        return tweetAccount.account.author.toBase58() === author.toBase58();
       })
     );
   });
@@ -203,16 +199,15 @@ describe("solana-twitter", () => {
 
   it("can update a tweet", async () => {
     // Send a tweet and fetch its account.
-    const author = anchorProvider.wallet.publicKey;
+    const tweet = anchor.web3.Keypair.generate();
 
     // Call the "SendTweet" instruction.
-    const tweet = anchor.web3.Keypair.generate();
     await program.methods
       .sendTweet("web2", "Hello World!")
       .accounts({
         tweet: tweet.publicKey,
         author: author,
-        systemProgram: anchor.web3.SystemProgram.programId,
+        systemProgram: programId,
       })
       .signers([tweet])
       .rpc();
@@ -242,15 +237,16 @@ describe("solana-twitter", () => {
   });
 
   it("cannot update someone else's tweet", async () => {
-    // Call the "SendTweet" instruction.
+    const anotherAuthor = anchor.web3.Keypair.generate().publicKey;
     const tweet = anchor.web3.Keypair.generate();
 
+    // Call the "SendTweet" instruction.
     await program.methods
       .sendTweet("solana", "Solana is awesome!")
       .accounts({
         tweet: tweet.publicKey,
-        author: anchorProvider.wallet.publicKey,
-        systemProgram: anchor.web3.SystemProgram.programId,
+        author: author,
+        systemProgram: programId,
       })
       .signers([tweet])
       .rpc();
@@ -264,7 +260,7 @@ describe("solana-twitter", () => {
         .updateTweet("eth", "Ethereum is awesome!")
         .accounts({
           tweet: tweet.publicKey,
-          author: anchor.web3.Keypair.generate().publicKey,
+          author: anotherAuthor,
         })
         .rpc();
 
@@ -278,16 +274,15 @@ describe("solana-twitter", () => {
   });
 
   it("can delete a tweet", async () => {
-    // Create a new tweet.
-    const author = anchorProvider.wallet.publicKey;
     const tweet = anchor.web3.Keypair.generate();
 
+    // Call the "SendTweet" instruction.
     await program.methods
       .sendTweet("solana", "Solana is awesome!")
       .accounts({
         tweet: tweet.publicKey,
         author: author,
-        systemProgram: anchor.web3.SystemProgram.programId,
+        systemProgram: programId,
       })
       .signers([tweet])
       .rpc();
@@ -310,16 +305,16 @@ describe("solana-twitter", () => {
   });
 
   it("cannot delete someone else's tweet", async () => {
-    // Create a new tweet.
-    const author = anchorProvider.wallet.publicKey;
+    const anotherAuthor = anchor.web3.Keypair.generate().publicKey;
     const tweet = anchor.web3.Keypair.generate();
-    // const tweet = await sendTweet(author, 'solana', 'gm');
+
+    // Call the "SendTweet" instruction.
     await program.methods
       .sendTweet("solana", "Solana is awesome!")
       .accounts({
         tweet: tweet.publicKey,
         author: author,
-        systemProgram: anchor.web3.SystemProgram.programId,
+        systemProgram: programId,
       })
       .signers([tweet])
       .rpc();
@@ -330,7 +325,7 @@ describe("solana-twitter", () => {
         .deleteTweet()
         .accounts({
           tweet: tweet.publicKey,
-          author: anchor.web3.Keypair.generate().publicKey,
+          author: anotherAuthor,
         })
         .rpc();
 
