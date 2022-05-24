@@ -10,11 +10,11 @@ pub mod solana_twitter {
         let author: &Signer = &ctx.accounts.author;
         let clock: Clock = Clock::get().unwrap();
 
-        if topic.chars().count() > 50 {
+        if topic.chars().count() > MAX_TOPIC_STRING_LENGTH {
             return Err(error!(ErrorCode::TopicTooLong));
         }
 
-        if content.chars().count() > 280 {
+        if content.chars().count() > MAX_CONTENT_STRING_LENGTH {
             return Err(error!(ErrorCode::ContentTooLong));
         }
 
@@ -29,11 +29,11 @@ pub mod solana_twitter {
     pub fn update_tweet(ctx: Context<UpdateTweet>, topic: String, content: String) -> Result<()> {
         let tweet: &mut Account<Tweet> = &mut ctx.accounts.tweet;
 
-        if topic.chars().count() > 50 {
+        if topic.chars().count() > MAX_TOPIC_STRING_LENGTH {
             return Err(ErrorCode::TopicTooLong.into());
         }
 
-        if content.chars().count() > 280 {
+        if content.chars().count() > MAX_CONTENT_STRING_LENGTH {
             return Err(ErrorCode::ContentTooLong.into());
         }
 
@@ -60,7 +60,7 @@ pub struct UpdateTweet<'info> {
     pub author: Signer<'info>,
 }
 
-// 1. Define the structure of the Tweet account.
+// Define the structure of the Tweet account.
 #[account]
 pub struct Tweet {
     pub author: Pubkey,
@@ -69,15 +69,19 @@ pub struct Tweet {
     pub content: String,
 }
 
-// 2. Add some useful constants for sizing propeties.
+// Constants for text size
+const MAX_TOPIC_STRING_LENGTH: usize = 50;
+const MAX_CONTENT_STRING_LENGTH: usize = 280; // 280 chars max
+
+// Constants for sizing propeties.
 const DISCRIMINATOR_LENGTH: usize = 8;
 const PUBLIC_KEY_LENGTH: usize = 32;
 const TIMESTAMP_LENGTH: usize = 8;
 const STRING_LENGTH_PREFIX: usize = 4; // Stores the size of the string.
-const MAX_TOPIC_LENGTH: usize = 50 * 4; // 50 chars max.
-const MAX_CONTENT_LENGTH: usize = 280 * 4; // 280 chars max
+const MAX_TOPIC_LENGTH: usize = MAX_TOPIC_STRING_LENGTH * 4; // 50 chars max.
+const MAX_CONTENT_LENGTH: usize = MAX_CONTENT_STRING_LENGTH * 4; // 280 chars max
 
-// 3. Add a constant on the Tweet account that provides its total size.
+// Constant on the Tweet account that provides its total size.
 impl Tweet {
     const LEN: usize = DISCRIMINATOR_LENGTH
         + PUBLIC_KEY_LENGTH // Author.
