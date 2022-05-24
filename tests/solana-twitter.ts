@@ -240,4 +240,40 @@ describe("solana-twitter", () => {
     assert.equal(updatedTweetAccount.topic, "solana");
     assert.equal(updatedTweetAccount.content, "gm everyone!");
   });
+
+  it("cannot update someone else's tweet", async () => {
+    // Call the "SendTweet" instruction.
+    const tweet = anchor.web3.Keypair.generate();
+
+    await program.methods
+      .sendTweet("solana", "Solana is awesome!")
+      .accounts({
+        tweet: tweet.publicKey,
+        author: anchorProvider.wallet.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([tweet])
+      .rpc();
+
+    // Fetch the account details of the created tweet.
+    const tweetAccount = await program.account.tweet.fetch(tweet.publicKey);
+
+    // Update the Tweet, or maybe not
+    try {
+      await program.methods
+        .updateTweet("eth", "Ethereum is awesome!")
+        .accounts({
+          tweet: tweet.publicKey,
+          author: anchor.web3.Keypair.generate().publicKey,
+        })
+        .rpc();
+
+      assert.fail("We were able to update someone else's tweet.");
+    } catch (error) {
+      // Ensure the tweet account kept the initial data.
+      const tweetAccount = await program.account.tweet.fetch(tweet.publicKey);
+      assert.equal(tweetAccount.topic, "solana");
+      assert.equal(tweetAccount.content, "Solana is awesome!");
+    }
+  });
 });
