@@ -200,4 +200,44 @@ describe("solana-twitter", () => {
       })
     );
   });
+
+  it("can update a tweet", async () => {
+    // Send a tweet and fetch its account.
+    const author = anchorProvider.wallet.publicKey;
+
+    // Call the "SendTweet" instruction.
+    const tweet = anchor.web3.Keypair.generate();
+    await program.methods
+      .sendTweet("web2", "Hello World!")
+      .accounts({
+        tweet: tweet.publicKey,
+        author: author,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([tweet])
+      .rpc();
+
+    // Fetch the account details of the created tweet.
+    const tweetAccount = await program.account.tweet.fetch(tweet.publicKey);
+
+    // Ensure it has the right data.
+    assert.equal(tweetAccount.topic, "web2");
+    assert.equal(tweetAccount.content, "Hello World!");
+
+    // Update the Tweet.
+    await program.methods
+      .updateTweet("solana", "gm everyone!")
+      .accounts({
+        tweet: tweet.publicKey,
+        author: author,
+      })
+      .rpc();
+
+    // Ensure the updated tweet has the updated data.
+    const updatedTweetAccount = await program.account.tweet.fetch(
+      tweet.publicKey
+    );
+    assert.equal(updatedTweetAccount.topic, "solana");
+    assert.equal(updatedTweetAccount.content, "gm everyone!");
+  });
 });
