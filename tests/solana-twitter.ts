@@ -276,4 +276,70 @@ describe("solana-twitter", () => {
       assert.equal(tweetAccount.content, "Solana is awesome!");
     }
   });
+
+  it("can delete a tweet", async () => {
+    // Create a new tweet.
+    const author = anchorProvider.wallet.publicKey;
+    const tweet = anchor.web3.Keypair.generate();
+
+    await program.methods
+      .sendTweet("solana", "Solana is awesome!")
+      .accounts({
+        tweet: tweet.publicKey,
+        author: author,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([tweet])
+      .rpc();
+
+    // Delete the Tweet.
+    await program.methods
+      .deleteTweet()
+      .accounts({
+        tweet: tweet.publicKey,
+        author: author,
+      })
+      .rpc();
+
+    // Ensure fetching the tweet account returns null.
+    const tweetAccount = await program.account.tweet.fetchNullable(
+      tweet.publicKey
+    );
+
+    assert.ok(tweetAccount === null);
+  });
+
+  it("cannot delete someone else's tweet", async () => {
+    // Create a new tweet.
+    const author = anchorProvider.wallet.publicKey;
+    const tweet = anchor.web3.Keypair.generate();
+    // const tweet = await sendTweet(author, 'solana', 'gm');
+    await program.methods
+      .sendTweet("solana", "Solana is awesome!")
+      .accounts({
+        tweet: tweet.publicKey,
+        author: author,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([tweet])
+      .rpc();
+
+    // Try to delete the Tweet from a different author.
+    try {
+      await program.methods
+        .deleteTweet()
+        .accounts({
+          tweet: tweet.publicKey,
+          author: anchor.web3.Keypair.generate().publicKey,
+        })
+        .rpc();
+
+      assert.fail("We were able to delete someone else's tweet.");
+    } catch (error) {
+      // Ensure the tweet account still exists with the right data.
+      const tweetAccount = await program.account.tweet.fetch(tweet.publicKey);
+      assert.equal(tweetAccount.topic, "solana");
+      assert.equal(tweetAccount.content, "Solana is awesome!");
+    }
+  });
 });
