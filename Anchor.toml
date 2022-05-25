@@ -3,11 +3,18 @@ seeds = false
 [programs.localnet]
 solana_twitter = "3rUnayciVyLhdoudmFxS55M213ykYjLP6PZvUtTstHKJ"
 
+[programs.devnet]
+solana_twitter = "3rUnayciVyLhdoudmFxS55M213ykYjLP6PZvUtTstHKJ"
+
+[programs.mainnet]
+solana_twitter = "3rUnayciVyLhdoudmFxS55M213ykYjLP6PZvUtTstHKJ"
+
+
 [registry]
 url = "https://anchor.projectserum.com"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "/Users/viktor/.config/solana/id.json"
 
 [scripts]
