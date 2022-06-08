@@ -14,6 +14,11 @@ anchor build
 ## Test
 
 ```
+# Make sure you’re on the localnet.
+solana config set --url localhost
+
+# And check your Anchor.toml file.
+
 anchor test
 ```
 
