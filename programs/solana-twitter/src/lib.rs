@@ -1,5 +1,7 @@
 use anchor_lang::prelude::*;
 
+pub mod errors;
+
 declare_id!("3rUnayciVyLhdoudmFxS55M213ykYjLP6PZvUtTstHKJ");
 
 #[program]
@@ -11,11 +13,11 @@ pub mod solana_twitter {
         let clock: Clock = Clock::get().unwrap();
 
         if topic.chars().count() > MAX_TOPIC_STRING_LENGTH {
-            return Err(error!(ErrorCode::TopicTooLong));
+            return Err(error!(errors::ErrorCode::TopicTooLong));
         }
 
         if content.chars().count() > MAX_CONTENT_STRING_LENGTH {
-            return Err(error!(ErrorCode::ContentTooLong));
+            return Err(error!(errors::ErrorCode::ContentTooLong));
         }
 
         tweet.author = *author.key;
@@ -30,11 +32,11 @@ pub mod solana_twitter {
         let tweet: &mut Account<Tweet> = &mut ctx.accounts.tweet;
 
         if topic.chars().count() > MAX_TOPIC_STRING_LENGTH {
-            return Err(ErrorCode::TopicTooLong.into());
+            return Err(errors::ErrorCode::TopicTooLong.into());
         }
 
         if content.chars().count() > MAX_CONTENT_STRING_LENGTH {
-            return Err(ErrorCode::ContentTooLong.into());
+            return Err(errors::ErrorCode::ContentTooLong.into());
         }
 
         tweet.topic = topic;
@@ -99,12 +101,4 @@ impl Tweet {
         + TIMESTAMP_LENGTH // Timestamp.
         + STRING_LENGTH_PREFIX + MAX_TOPIC_LENGTH // Topic.
         + STRING_LENGTH_PREFIX + MAX_CONTENT_LENGTH; // Content.
-}
-
-#[error_code]
-pub enum ErrorCode {
-    #[msg("The provided topic should be 50 characters long maximum.")]
-    TopicTooLong,
-    #[msg("The provided content should be 280 characters long maximum.")]
-    ContentTooLong,
 }
