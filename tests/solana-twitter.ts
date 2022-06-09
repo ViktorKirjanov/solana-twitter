@@ -34,6 +34,7 @@ describe("solana-twitter", () => {
     assert.equal(tweetAccount.author.toBase58(), author.toBase58());
     assert.equal(tweetAccount.topic, "veganism");
     assert.equal(tweetAccount.content, "Hummus, am I right?");
+    // assert.equal(tweetAccount.likesCount, 0);
     assert.ok(tweetAccount.timestamp);
   });
 
@@ -335,6 +336,192 @@ describe("solana-twitter", () => {
       const tweetAccount = await program.account.tweet.fetch(tweet.publicKey);
       assert.equal(tweetAccount.topic, "solana");
       assert.equal(tweetAccount.content, "Solana is awesome!");
+    }
+  });
+
+  it("owner can like his tweet", async () => {
+    const tweet = anchor.web3.Keypair.generate();
+    const like = anchor.web3.Keypair.generate();
+
+    // Call the "SendTweet" instruction.
+    await program.methods
+      .sendTweet("veganism", "Hummus, am I right?")
+      .accounts({
+        tweet: tweet.publicKey,
+        author: author,
+        systemProgram: programId,
+      })
+      .signers([tweet])
+      .rpc();
+
+    // Call the "AddLike" instruction.
+    await program.methods
+      .addLike(tweet.publicKey)
+      .accounts({
+        like: like.publicKey,
+        author: author,
+        systemProgram: programId,
+      })
+      .signers([like])
+      .rpc();
+
+    // Fetch the account details of the created tweet.
+    const tweetAccount = await program.account.tweet.fetch(tweet.publicKey);
+
+    // Fetch the account details of the created like.
+    const likeAccount = await program.account.like.fetch(like.publicKey);
+
+    // Ensure it has the right data.
+    assert.equal(tweetAccount.author.toBase58(), author.toBase58());
+    assert.equal(tweetAccount.topic, "veganism");
+    assert.equal(tweetAccount.content, "Hummus, am I right?");
+    assert.ok(tweetAccount.timestamp);
+
+    assert.equal(likeAccount.author.toBase58(), author.toBase58());
+    assert.equal(
+      likeAccount.tweetPubkey.toBase58(),
+      tweet.publicKey.toBase58()
+    );
+    assert.ok(likeAccount.timestamp);
+  });
+
+  // it("owner can not like his tweet twice", async () => {
+  //   const tweet = anchor.web3.Keypair.generate();
+  //   const like = anchor.web3.Keypair.generate();
+
+  //   // Call the "SendTweet" instruction.
+  //   await program.methods
+  //     .sendTweet("veganism", "Hummus, am I right?")
+  //     .accounts({
+  //       tweet: tweet.publicKey,
+  //       author: author,
+  //       systemProgram: programId,
+  //     })
+  //     .signers([tweet])
+  //     .rpc();
+
+  //   // Call the "AddLike" instruction.
+  //   await program.methods
+  //     .addLike(tweet.publicKey)
+  //     .accounts({
+  //       like: like.publicKey,
+  //       author: author,
+  //       systemProgram: programId,
+  //     })
+  //     .signers([like])
+  //     .rpc();
+
+  //   // Fetch the account details of the created tweet.
+  //   const tweetAccount = await program.account.tweet.fetch(tweet.publicKey);
+
+  //   // Fetch the account details of the created like.
+  //   const likeAccount = await program.account.like.fetch(like.publicKey);
+
+  //   // Ensure it has the right data.
+  //   assert.equal(tweetAccount.author.toBase58(), author.toBase58());
+  //   assert.equal(tweetAccount.topic, "veganism");
+  //   assert.equal(tweetAccount.content, "Hummus, am I right?");
+  //   assert.ok(tweetAccount.timestamp);
+
+  //   assert.equal(likeAccount.author.toBase58(), author.toBase58());
+
+  //   assert.equal(
+  //     likeAccount.tweetPubkey.toBase58(),
+  //     tweet.publicKey.toBase58()
+  //   );
+  //   assert.ok(likeAccount.timestamp);
+  // });
+
+  it("can delete a like", async () => {
+    const tweet = anchor.web3.Keypair.generate();
+    const like = anchor.web3.Keypair.generate();
+
+    // Call the "SendTweet" instruction.
+    await program.methods
+      .sendTweet("solana", "Solana is awesome!")
+      .accounts({
+        tweet: tweet.publicKey,
+        author: author,
+        systemProgram: programId,
+      })
+      .signers([tweet])
+      .rpc();
+
+    await program.methods
+      .addLike(tweet.publicKey)
+      .accounts({
+        like: like.publicKey,
+        author: author,
+        systemProgram: programId,
+      })
+      .signers([like])
+      .rpc();
+
+    // Delete the like.
+    await program.methods
+      .deleteLike()
+      .accounts({
+        like: like.publicKey,
+        author: author,
+      })
+      .rpc();
+
+    // Ensure fetching the like account returns null.
+    const likeAccount = await program.account.like.fetchNullable(
+      like.publicKey
+    );
+
+    assert.ok(likeAccount === null);
+  });
+
+  it("cannot delete someone else's like", async () => {
+    const anotherAuthor = anchor.web3.Keypair.generate().publicKey;
+    const tweet = anchor.web3.Keypair.generate();
+    const like = anchor.web3.Keypair.generate();
+
+    // Call the "SendTweet" instruction.
+    await program.methods
+      .sendTweet("solana", "Solana is awesome!")
+      .accounts({
+        tweet: tweet.publicKey,
+        author: author,
+        systemProgram: programId,
+      })
+      .signers([tweet])
+      .rpc();
+
+    await program.methods
+      .addLike(tweet.publicKey)
+      .accounts({
+        like: like.publicKey,
+        author: author,
+        systemProgram: programId,
+      })
+      .signers([like])
+      .rpc();
+
+    //   // Fetch the account details of the created like.
+    const likeAccount = await program.account.like.fetch(like.publicKey);
+
+    // Try to delete the Tweet from a different author.
+    try {
+      await program.methods
+        .deleteLike()
+        .accounts({
+          like: like.publicKey,
+          author: anotherAuthor,
+        })
+        .rpc();
+
+      assert.fail("We were able to delete someone else's like.");
+    } catch (error) {
+      // Ensure the like account still exists with the right data.
+      assert.equal(likeAccount.author.toBase58(), author.toBase58());
+      assert.equal(
+        likeAccount.tweetPubkey.toBase58(),
+        tweet.publicKey.toBase58()
+      );
+      assert.ok(likeAccount.timestamp);
     }
   });
 });

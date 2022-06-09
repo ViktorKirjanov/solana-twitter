@@ -1,6 +1,16 @@
-use anchor_lang::prelude::*;
-
+pub mod constants;
 pub mod errors;
+pub mod like_instruction;
+pub mod like_state;
+pub mod tweet_instruction;
+pub mod tweet_state;
+
+use anchor_lang::prelude::*;
+use constants::*;
+use like_instruction::*;
+use like_state::*;
+use tweet_instruction::*;
+use tweet_state::*;
 
 declare_id!("3rUnayciVyLhdoudmFxS55M213ykYjLP6PZvUtTstHKJ");
 
@@ -48,57 +58,22 @@ pub mod solana_twitter {
     pub fn delete_tweet(_ctx: Context<DeleteTweet>) -> Result<()> {
         Ok(())
     }
-}
 
-#[derive(Accounts)]
-pub struct SendTweet<'info> {
-    #[account(init, payer = author, space = Tweet::LEN)]
-    pub tweet: Account<'info, Tweet>,
-    #[account(mut)]
-    pub author: Signer<'info>,
-    pub system_program: Program<'info, System>,
-}
+    pub fn add_like(ctx: Context<AddLike>, tweet_pubkey: Pubkey) -> Result<()> {
+        let like: &mut Account<Like> = &mut ctx.accounts.like;
+        let author: &Signer = &ctx.accounts.author;
+        let clock: Clock = Clock::get().unwrap();
 
-#[derive(Accounts)]
-pub struct UpdateTweet<'info> {
-    #[account(mut, has_one = author)]
-    pub tweet: Account<'info, Tweet>,
-    pub author: Signer<'info>,
-}
+        //todo: check if like has been already added
 
-#[derive(Accounts)]
-pub struct DeleteTweet<'info> {
-    #[account(mut, has_one = author, close = author)]
-    pub tweet: Account<'info, Tweet>,
-    pub author: Signer<'info>,
-}
+        like.author = *author.key;
+        like.timestamp = clock.unix_timestamp;
+        like.tweet_pubkey = tweet_pubkey;
 
-// Define the structure of the Tweet account.
-#[account]
-pub struct Tweet {
-    pub author: Pubkey,
-    pub timestamp: i64,
-    pub topic: String,
-    pub content: String,
-}
+        Ok(())
+    }
 
-// Constants for text size
-const MAX_TOPIC_STRING_LENGTH: usize = 50;
-const MAX_CONTENT_STRING_LENGTH: usize = 280; // 280 chars max
-
-// Constants for sizing propeties.
-const DISCRIMINATOR_LENGTH: usize = 8;
-const PUBLIC_KEY_LENGTH: usize = 32;
-const TIMESTAMP_LENGTH: usize = 8;
-const STRING_LENGTH_PREFIX: usize = 4; // Stores the size of the string.
-const MAX_TOPIC_LENGTH: usize = MAX_TOPIC_STRING_LENGTH * 4; // 50 chars max.
-const MAX_CONTENT_LENGTH: usize = MAX_CONTENT_STRING_LENGTH * 4; // 280 chars max
-
-// Constant on the Tweet account that provides its total size.
-impl Tweet {
-    const LEN: usize = DISCRIMINATOR_LENGTH
-        + PUBLIC_KEY_LENGTH // Author.
-        + TIMESTAMP_LENGTH // Timestamp.
-        + STRING_LENGTH_PREFIX + MAX_TOPIC_LENGTH // Topic.
-        + STRING_LENGTH_PREFIX + MAX_CONTENT_LENGTH; // Content.
+    pub fn delete_like(_ctx: Context<DeleteLike>) -> Result<()> {
+        Ok(())
+    }
 }
