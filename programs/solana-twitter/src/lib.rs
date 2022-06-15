@@ -1,5 +1,7 @@
 pub mod constants;
 pub mod errors;
+pub mod gif_tweet_instruction;
+pub mod gif_tweet_state;
 pub mod like_instruction;
 pub mod like_state;
 pub mod tweet_instruction;
@@ -7,6 +9,8 @@ pub mod tweet_state;
 
 use anchor_lang::prelude::*;
 use constants::*;
+use gif_tweet_instruction::*;
+use gif_tweet_state::*;
 use like_instruction::*;
 use like_state::*;
 use tweet_instruction::*;
@@ -74,6 +78,46 @@ pub mod solana_twitter {
     }
 
     pub fn delete_like(_ctx: Context<DeleteLike>) -> Result<()> {
+        Ok(())
+    }
+
+    pub fn send_gif_tweet(ctx: Context<SendGifTweet>, url: String) -> Result<()> {
+        let tweet: &mut Account<GifTweet> = &mut ctx.accounts.tweet;
+        let author: &Signer = &ctx.accounts.author;
+        let clock: Clock = Clock::get().unwrap();
+
+        if url.chars().count() == 0 {
+            return Err(error!(errors::ErrorCode::URLEmpty));
+        }
+
+        if url.chars().count() > MAX_URL_STRING_LENGTH {
+            return Err(error!(errors::ErrorCode::URLTooLong));
+        }
+
+        tweet.author = *author.key;
+        tweet.timestamp = clock.unix_timestamp;
+        tweet.url = url;
+
+        Ok(())
+    }
+
+    pub fn update_gif_tweet(ctx: Context<UpdateGifTweet>, url: String) -> Result<()> {
+        let tweet: &mut Account<GifTweet> = &mut ctx.accounts.tweet;
+
+        if url.chars().count() == 0 {
+            return Err(error!(errors::ErrorCode::URLEmpty));
+        }
+
+        if url.chars().count() > MAX_URL_STRING_LENGTH {
+            return Err(error!(errors::ErrorCode::URLTooLong));
+        }
+
+        tweet.url = url;
+
+        Ok(())
+    }
+
+    pub fn delete_gif_tweet(_ctx: Context<DeleteGifTweet>) -> Result<()> {
         Ok(())
     }
 }

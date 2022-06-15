@@ -6,4 +6,8 @@ pub enum ErrorCode {
     TopicTooLong,
     #[msg("The provided content should be 280 characters long maximum.")]
     ContentTooLong,
+    #[msg("The provided URL should be 280 characters long maximum.")]
+    URLTooLong,
+    #[msg("URL field should not be empty.")]
+    URLEmpty,
 }
